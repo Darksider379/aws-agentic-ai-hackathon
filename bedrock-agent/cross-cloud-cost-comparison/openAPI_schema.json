@@ -7,7 +7,7 @@
     },
     "servers": [
       {
-        "url": "https://zbwc0uszg3.execute-api.us-east-1.amazonaws.com/default",
+        "url": "https://35f9d0wrrj.execute-api.us-east-1.amazonaws.com/default",
         "description": "API Gateway endpoint (not used by Bedrock Agents at runtime)"
       }
     ],

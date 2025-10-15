@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: Cost Forecasting Proxy API
+  version: 1.0.0
+  description: >
+    Trigger AWS CUR-based cost forecasting via a proxy Lambda.
+    Returns normalized 30/60/90-day totals, S3/Athena artifact paths, and optional budget verdict.
+
+servers:
+  - url: https://2kyhgedkib.execute-api.us-east-1.amazonaws.com/default
+
+paths:
+  /forecasting-proxy:
+    description: >
+      API endpoint that invokes the forecasting-proxy Lambda. The proxy calls the backend forecaster
+      and returns a normalized JSON object ready for Bedrock Agents.
+    post:
+      operationId: runForecastProxy
+      summary: Run cost forecast via proxy
+      description: >
+        Accepts a single horizon (horizon_days ∈ {30,60,90}) or multiple horizons (horizons=[30,60,90]).
+        Optionally evaluates a monthly budget (budget_usd). Returns totals, artifact URIs, and optional budget verdict.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Optional trigger payload for forecast run
+              additionalProperties: false
+              properties:
+                horizon_days:
+                  type: integer
+                  enum: [30, 60, 90]
+                  example: 30
+                  description: Forecast horizon in days. Defaults to 90 if omitted and no horizons array is supplied.
+                horizons:
+                  type: array
+                  description: List of horizons to summarize (e.g., [30,60,90]). If provided, the backend may execute a single 90-day run and read all totals.
+                  items:
+                    type: integer
+                    enum: [30, 60, 90]
+                  example: [30, 60, 90]
+                budget_usd:
+                  type: number
+                  example: 500000
+                  description: Optional monthly budget to compare against this month's forecast.
+                include_values:
+                  type: boolean
+                  default: false
+                  example: false
+                  description: If true, response includes S3 URIs for daily CSVs (history and forecast).
+      responses:
+        '200':
+          description: Forecast proxy executed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - run_id
+                  - horizons_requested
+                  - backend_horizon_used_days
+                  - totals
+                  - artifacts
+                  - note
+                properties:
+                  run_id:
+                    type: string
+                    example: "20251008T150425403767Z-225d5854-966"
+                  horizons_requested:
+                    type: array
+                    items:
+                      type: integer
+                      enum: [30, 60, 90]
+                    example: [30]
+                  backend_horizon_used_days:
+                    type: integer
+                    enum: [30, 60, 90]
+                    example: 30
+                  totals:
+                    type: object
+                    required: [d30_usd, d60_usd, d90_usd, this_month_usd]
+                    properties:
+                      d30_usd:        { type: number, example: 59982501.14 }
+                      d60_usd:        { type: number, example: 121708321.72 }
+                      d90_usd:        { type: number, example: 183411160.46 }
+                      this_month_usd: { type: number, example: 63046038.66 }
+                  artifacts:
+                    type: object
+                    required:
+                      - history_csv
+                      - forecast_csv
+                      - athena_forecast_table
+                      - athena_partition_run_id
+                      - athena_partition_s3
+                    properties:
+                      history_csv:
+                        type: string
+                        example: "s3://athena-query-results-agentic-ai/cost-agent-v2/runs/20251008T150425403767Z-225d5854-966/forecast/history_daily.csv"
+                      forecast_csv:
+                        type: string
+                        example: "s3://athena-query-results-agentic-ai/cost-agent-v2/runs/20251008T150425403767Z-225d5854-966/forecast/forecast_daily.csv"
+                      athena_forecast_table:
+                        type: string
+                        example: "forecast_daily_v1"
+                      athena_partition_run_id:
+                        type: string
+                        example: "20251008T150425403767Z-225d5854-966"
+                      athena_partition_s3:
+                        type: string
+                        example: "s3://athena-query-results-agentic-ai/cost-agent-v2/forecast_table/run_id=20251008T150425403767Z-225d5854-966/"
+                  budget:
+                    type: object
+                    nullable: true
+                    properties:
+                      budget_usd: { type: number, example: 500000 }
+                      status:     { type: string, enum: ["over", "under"], example: "over" }
+                      delta_usd:  { type: number, example: 62546038.66 }
+                  note:
+                    type: string
+                    example: "Computed from a 30-day backend run"
+        '400':
+          description: Bad request (invalid input).
+        '500':
+          description: Internal server error during forecast execution.

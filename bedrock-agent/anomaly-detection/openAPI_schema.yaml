@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: Cost Anomalies API
+  version: 1.0.0
+servers:
+  - url: https://m3ws9g4vfd.execute-api.us-east-1.amazonaws.com/default
+paths:
+  /anomaly-handler:
+    post:
+      operationId: runAnomalies
+      summary: Run anomaly detection and return metadata + top-N anomalies
+      description: >
+        Triggers the anomaly job. The Lambda behind this endpoint returns a JSON
+        object with the run id, Athena table, S3 prefix, total count, and a top-N list.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Optional trigger payload (usually empty)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run_id, table, s3_prefix, count, top]
+                properties:
+                  run_id:
+                    type: string
+                    example: "20251006T182549Z"
+                  table:
+                    type: string
+                    example: "synthetic_cur.cost_anomalies"
+                  s3_prefix:
+                    type: string
+                    example: "s3://athena-query-results-agentic-ai/cost-agent-v2/anomalies/20251006T182549Z/"
+                  count:
+                    type: integer
+                    example: 9
+                  top:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [usage_date, account_id, service, region, cost, robust_z, ewma_z,
+                         iqr_flag, ensemble_votes, severity, explanation_seed, run_id, created_at]
+                      properties:
+                        usage_date: { type: string, format: date, example: "2025-09-19" }
+                        account_id: { type: string, example: "UNKNOWN" }
+                        service: { type: string, example: "AmazonS3" }
+                        region: { type: string, example: "us-east-1" }
+                        cost: { type: number, example: 83712.166738 }
+                        robust_z: { type: number, example: -4.39 }
+                        ewma_z: { type: number, example: -2.13 }
+                        iqr_flag: { type: boolean, example: true }
+                        ensemble_votes: { type: integer, example: 2 }
+                        severity: { type: number, example: 10.52 }
+                        explanation_seed:
+                          type: string
+                          example: "On 2025-09-19, cost=83712.17 for account=UNKNOWN, service=AmazonS3, region=us-east-1 flagged..."
+                        explanation:
+                          type: string
+                          nullable: true
+                          example: "Probable drivers: seasonal data surge, new deployment. Checks: Athena query..., review tags."
+                        run_id: { type: string, example: "20251006T182549Z" }
+                        created_at: { type: string, format: date-time, example: "2025-10-06T18:26:09.442729Z" }
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
