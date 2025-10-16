@@ -69,7 +69,28 @@ LOCATION 's3://athena-query-results-agentic-ai/cost-agent-v2/recommendations'
 TBLPROPERTIES ('skip.header.line.count'='1');
 
 -- ---------------------------------------------------------------
--- 3) FORECAST DAILY COST TABLE (PARTITIONED BY run_id)
+-- 3) FORECAST DAILY COST TABLE (v1 - Legacy)
+-- ---------------------------------------------------------------
+DROP TABLE IF EXISTS synthetic_cur.forecast_daily_v1;
+CREATE EXTERNAL TABLE synthetic_cur.forecast_daily_v1(
+  ds         string COMMENT 'from deserializer',
+  yhat       string COMMENT 'from deserializer',
+  yhat_lower string COMMENT 'from deserializer',
+  yhat_upper string COMMENT 'from deserializer'
+)
+PARTITIONED BY (run_id string)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+  'escapeChar'='\\',
+  'quoteChar'='\"',
+  'separatorChar'=','
+)
+STORED AS TEXTFILE
+LOCATION 's3://athena-query-results-agentic-ai/cost-agent-v2/forecast_table'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+-- ---------------------------------------------------------------
+-- 4) FORECAST DAILY COST TABLE (v2 - Latest)
 -- ---------------------------------------------------------------
 DROP TABLE IF EXISTS synthetic_cur.forecast_daily_csv_raw;
 CREATE EXTERNAL TABLE synthetic_cur.forecast_daily_csv_raw(
@@ -92,7 +113,7 @@ TBLPROPERTIES ('skip.header.line.count'='1');
 --   MSCK REPAIR TABLE synthetic_cur.forecast_daily_csv_raw;
 
 -- ---------------------------------------------------------------
--- 4) PRICING RAW TABLE (MULTI-CLOUD CSV SOURCE)
+-- 5) PRICING RAW TABLE (MULTI-CLOUD CSV SOURCE)
 -- ---------------------------------------------------------------
 DROP TABLE IF EXISTS cost_comparison.pricing_raw;
 CREATE EXTERNAL TABLE cost_comparison.pricing_raw(
@@ -119,7 +140,7 @@ LOCATION 's3://cross-cloud-comparison/'
 TBLPROPERTIES ('skip.header.line.count'='1');
 
 -- ---------------------------------------------------------------
--- 5) NORMALIZED CROSS-CLOUD OFFERINGS TABLE (PARQUET)
+-- 6) NORMALIZED CROSS-CLOUD OFFERINGS TABLE (PARQUET)
 -- ---------------------------------------------------------------
 DROP TABLE IF EXISTS cost_comparison.cross_cloud_offerings_new;
 CREATE TABLE cost_comparison.cross_cloud_offerings_new
@@ -145,7 +166,7 @@ SELECT * FROM cleaned
 WHERE price_usd IS NOT NULL;
 
 -- ---------------------------------------------------------------
--- 6) COST ANOMALIES TABLE (OPTIONAL PERSISTENCE)
+-- 7) COST ANOMALIES TABLE (OPTIONAL PERSISTENCE)
 -- ---------------------------------------------------------------
 DROP TABLE IF EXISTS synthetic_cur.cost_anomalies;
 CREATE EXTERNAL TABLE synthetic_cur.cost_anomalies(
