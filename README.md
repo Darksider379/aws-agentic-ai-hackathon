@@ -5,3 +5,4 @@ Architecture diagram: https://github.com/Darksider379/aws-agentic-ai-hackathon/b
 Bedrock agent instruction: https://github.com/Darksider379/aws-agentic-ai-hackathon/blob/main/bedrock-agent/agent_instruction.txt 
 Table DDLs: https://github.com/Darksider379/aws-agentic-ai-hackathon/blob/main/DDLs/tables.sql 
 Sample data: https://github.com/Darksider379/aws-agentic-ai-hackathon/tree/main/DDLs/assets/data 
+Youtube link: https://www.youtube.com/watch?v=EMaSojNiKR0 
